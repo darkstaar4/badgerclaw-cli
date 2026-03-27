@@ -16,7 +16,7 @@ export const loginCommand = new Command('login')
     const verifier = generateCodeVerifier();
     const challenge = generateCodeChallenge(verifier);
 
-    const authUrl = `https://api.badger.signout.io/cli-auth?code=${challenge}`;
+    const authUrl = `https://badgerclaw.ai/cli-auth?code=${challenge}`;
 
     console.log(chalk.yellow('Opening browser for authentication...'));
     console.log(chalk.dim(`If the browser doesn't open, visit: ${authUrl}`));
@@ -29,7 +29,7 @@ export const loginCommand = new Command('login')
 
     while (Date.now() - startTime < POLL_TIMEOUT_MS) {
       try {
-        const response = await client.post('/cli-auth/poll', {
+        const response = await client.post(`/api/v1/openclaw/cli/auth/poll/${challenge}`, {
           code_verifier: verifier,
           code_challenge: challenge,
         });

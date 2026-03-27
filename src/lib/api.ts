@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { readAuth } from './auth';
 
-const BASE_URL = 'https://api.badger.signout.io';
+const BASE_URL = 'https://api.badgerclaw.ai';
 
 export function getClient(): AxiosInstance {
   const auth = readAuth();
