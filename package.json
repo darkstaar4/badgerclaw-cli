@@ -1,0 +1,35 @@
+{
+  "name": "badgerclaw",
+  "version": "0.1.0",
+  "description": "BadgerClaw CLI — one-click bot provisioning",
+  "main": "dist/index.js",
+  "bin": {
+    "badgerclaw": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/darkstaar4/badgerclaw-cli.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/darkstaar4/badgerclaw-cli/issues"
+  },
+  "homepage": "https://github.com/darkstaar4/badgerclaw-cli#readme",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "open": "^8.4.2",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}
