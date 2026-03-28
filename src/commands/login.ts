@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import open from 'open';
 import os from 'os';
+import crypto from 'crypto';
 import { generateCodeVerifier, generateCodeChallenge } from '../lib/pkce';
 import { writeAuth, extractUsername } from '../lib/auth';
 import { getUnauthenticatedClient } from '../lib/api';
@@ -35,16 +36,23 @@ export const loginCommand = new Command('login')
         });
 
         if (response.data?.access_token) {
-          const { access_token, user_id, instance_id, expires_at } = response.data;
+          const { access_token, user_id, expires_at } = response.data;
+
+          // Generate a stable instance_id from hostname + a machine fingerprint
+          const machineId = crypto
+            .createHash('sha256')
+            .update(`${os.hostname()}-${os.platform()}-${os.arch()}`)
+            .digest('hex')
+            .slice(0, 16);
+          const instance_id = `openclaw-${os.hostname().toLowerCase().replace(/[^a-z0-9]/g, '-')}-${machineId}`;
 
           writeAuth({ access_token, user_id, instance_id, expires_at });
 
-          // Register instance
+          // Register instance with backend so dashboard shows connected
           try {
-            const version = require('../../package.json').version;
+            const { version } = require('../../package.json');
             await client.post('/api/v1/openclaw/register', {
               instance_id,
-              user_id,
               label: os.hostname(),
               version,
             }, {

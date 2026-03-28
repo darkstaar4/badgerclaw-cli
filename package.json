@@ -1,7 +1,7 @@
 {
   "name": "badgerclaw",
-  "version": "0.1.1",
-  "description": "BadgerClaw CLI — one-click bot provisioning",
+  "version": "0.1.2",
+  "description": "BadgerClaw CLI \u2014 one-click bot provisioning",
   "main": "dist/index.js",
   "bin": {
     "badgerclaw": "./dist/index.js"
