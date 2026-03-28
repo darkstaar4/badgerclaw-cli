@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { loginCommand } from './commands/login';
+import { logoutCommand } from './commands/logout';
 import { statusCommand } from './commands/status';
 import { botCommand } from './commands/bot';
 
@@ -13,6 +14,7 @@ program
   .version(require('../package.json').version);
 
 program.addCommand(loginCommand);
+program.addCommand(logoutCommand);
 program.addCommand(statusCommand);
 program.addCommand(botCommand);
 

@@ -20,3 +20,13 @@ export function getUnauthenticatedClient(): AxiosInstance {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+export function getAuthenticatedClient(token: string): AxiosInstance {
+  return axios.create({
+    baseURL: BASE_URL,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
