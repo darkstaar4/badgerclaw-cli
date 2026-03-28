@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { generateCodeVerifier, generateCodeChallenge } from '../lib/pkce';
 import { writeAuth, extractUsername } from '../lib/auth';
 import { getUnauthenticatedClient } from '../lib/api';
+import { runAutoPair } from './autopair';
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 120000;
@@ -63,6 +64,14 @@ export const loginCommand = new Command('login')
           }
 
           spinner.succeed(chalk.green(`Logged in as ${extractUsername(user_id)}`));
+
+          // Auto-pair any pending bots silently
+          const paired = await runAutoPair(true);
+          if (paired > 0) {
+            console.log(chalk.green(`✅ ${paired} bot(s) automatically paired to OpenClaw.`));
+            console.log(chalk.yellow('Run: openclaw gateway restart'));
+          }
+
           return;
         }
       } catch {
