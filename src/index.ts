@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('badgerclaw')
   .description('BadgerClaw CLI — one-click bot provisioning')
-  .version('0.1.0');
+  .version(require('../package.json').version);
 
 program.addCommand(loginCommand);
 program.addCommand(statusCommand);
