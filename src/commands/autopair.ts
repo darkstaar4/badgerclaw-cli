@@ -29,9 +29,10 @@ export async function redeemAndWrite(pairCode: string, botName: string, botUserI
   const auth = readAuth();
   if (!auth) return;
 
-  const spinner = silent ? null : ora(`Pairing bot: ${botName} (${botUserId})`).start();
+  const spinner = silent ? null : ora(`Pairing bot: ${botName}...`).start();
 
   try {
+    // Redeem the pair code to get Matrix credentials
     const redeemResp = await fetch(`${API_BASE}/api/v1/pairing/redeem`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,24 +41,34 @@ export async function redeemAndWrite(pairCode: string, botName: string, botUserI
 
     if (!redeemResp.ok) {
       const err = await redeemResp.json().catch(() => ({ detail: redeemResp.statusText }));
-      spinner?.fail(chalk.red(`Failed to redeem ${botName}: ${err.detail}`));
+      spinner?.fail(chalk.red(`Failed to redeem ${botName}: ${(err as any).detail || redeemResp.status}`));
       return;
     }
 
     const bot = await redeemResp.json() as RedeemResponse;
-    writeToOpenClawConfig(bot);
 
+    // Write to OpenClaw config using `openclaw config set` — this triggers gateway hot-reload
+    // (fs.writeFileSync doesn't; `openclaw config set` does)
+    const { execSync } = await import('child_process');
+    const localpart = bot.user_id.split(':')[0].replace('@', '').replace(/_bot$/, '');
+    const base = `channels.badgerclaw.accounts.${localpart}`;
+    execSync(`openclaw config set ${base}.userId "${bot.user_id}"`, { encoding: 'utf-8', timeout: 10000, stdio: 'pipe' });
+    execSync(`openclaw config set ${base}.accessToken "${bot.access_token}"`, { encoding: 'utf-8', timeout: 10000, stdio: 'pipe' });
+    execSync(`openclaw config set ${base}.homeserver "${bot.homeserver}"`, { encoding: 'utf-8', timeout: 10000, stdio: 'pipe' });
+    execSync(`openclaw config set ${base}.encryption true`, { encoding: 'utf-8', timeout: 10000, stdio: 'pipe' });
+    if (bot.device_id) {
+      execSync(`openclaw config set ${base}.deviceId "${bot.device_id}"`, { encoding: 'utf-8', timeout: 10000, stdio: 'pipe' });
+    }
+
+    // Mark as claimed
     await fetch(`${API_BASE}/api/v1/openclaw/pending-pairs/${pairCode}/claim`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${auth.access_token}` },
-    });
+    }).catch(() => {});
 
-    spinner?.succeed(chalk.green(`✅ Paired ${bot.bot_name} (${bot.user_id})`));
-    if (!silent) {
-      console.log(chalk.yellow(`\n⚡ Bot paired. Run: openclaw gateway restart`));
-    }
-  } catch (e) {
-    spinner?.fail(chalk.red(`Error pairing ${botName}: ${e}`));
+    spinner?.succeed(chalk.green(`✅ ${bot.bot_name} (${bot.user_id}) paired — bot is live!`));
+  } catch (e: any) {
+    spinner?.fail(chalk.red(`Failed to pair ${botName}: ${e.message}`));
   }
 }
 
@@ -77,28 +88,11 @@ export async function runAutoPair(silent = false): Promise<number> {
       const spinner = silent ? null : ora(`Pairing bot: ${pair.bot_name} (${pair.bot_user_id})`).start();
 
       try {
-        // Redeem the pair code
-        const redeemResp = await fetch(`${API_BASE}/api/v1/pairing/redeem`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: pair.pair_code }),
-        });
+        await redeemAndWrite(pair.pair_code, pair.bot_name, pair.bot_user_id, silent);
 
-        if (!redeemResp.ok) {
-          const err = await redeemResp.json().catch(() => ({ detail: redeemResp.statusText }));
-          spinner?.fail(chalk.red(`Failed to redeem ${pair.bot_name}: ${err.detail}`));
-          continue;
-        }
+        // Mark as claimed (redeemAndWrite already does this, but do it here too for runAutoPair path)
+        await client.post(`/api/v1/openclaw/pending-pairs/${pair.pair_code}/claim`).catch(() => {});
 
-        const bot = await redeemResp.json() as RedeemResponse;
-
-        // Write to OpenClaw config
-        writeToOpenClawConfig(bot);
-
-        // Mark as claimed so it won't be returned again
-        await client.post(`/api/v1/openclaw/pending-pairs/${pair.pair_code}/claim`);
-
-        spinner?.succeed(chalk.green(`✅ Paired ${bot.bot_name} (${bot.user_id})`));
         paired++;
       } catch (e) {
         spinner?.fail(chalk.red(`Error pairing ${pair.bot_name}: ${e}`));

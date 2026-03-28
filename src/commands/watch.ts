@@ -15,10 +15,12 @@ export const watchCommand = new Command("watch")
     }
     await runAutoPair(false);
     console.log(chalk.green("🔴 Listening for pair events... (Ctrl+C to stop)"));
-    const { default: EventSource } = await import("eventsource");
-    const es = new (EventSource as any)(`${API_BASE}/api/v1/openclaw/events`, {
+    // Use require() for eventsource v1 (CJS compatible)
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const EventSource = require("eventsource") as typeof import("eventsource");
+    const es = new EventSource(`${API_BASE}/api/v1/openclaw/events`, {
       headers: { Authorization: `Bearer ${auth.access_token}` },
-    });
+    } as any);
     es.onmessage = async (event: any) => {
       try {
         const data = JSON.parse(event.data);
