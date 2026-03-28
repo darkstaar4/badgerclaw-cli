@@ -8,6 +8,7 @@ import { generateCodeVerifier, generateCodeChallenge } from '../lib/pkce';
 import { writeAuth, extractUsername } from '../lib/auth';
 import { getUnauthenticatedClient } from '../lib/api';
 import { runAutoPair } from './autopair';
+import { checkForUpdates } from '../lib/update-check';
 import { spawn } from 'child_process';
 
 const POLL_INTERVAL_MS = 2000;
@@ -16,6 +17,9 @@ const POLL_TIMEOUT_MS = 120000;
 export const loginCommand = new Command('login')
   .description('Log in to BadgerClaw via browser')
   .action(async () => {
+    const { version } = require('../../package.json');
+    void checkForUpdates(version); // non-blocking
+
     const verifier = generateCodeVerifier();
     const challenge = generateCodeChallenge(verifier);
 
