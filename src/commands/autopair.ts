@@ -25,6 +25,42 @@ interface RedeemResponse {
   device_id: string;
 }
 
+export async function redeemAndWrite(pairCode: string, botName: string, botUserId: string, silent: boolean): Promise<void> {
+  const auth = readAuth();
+  if (!auth) return;
+
+  const spinner = silent ? null : ora(`Pairing bot: ${botName} (${botUserId})`).start();
+
+  try {
+    const redeemResp = await fetch(`${API_BASE}/api/v1/pairing/redeem`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: pairCode }),
+    });
+
+    if (!redeemResp.ok) {
+      const err = await redeemResp.json().catch(() => ({ detail: redeemResp.statusText }));
+      spinner?.fail(chalk.red(`Failed to redeem ${botName}: ${err.detail}`));
+      return;
+    }
+
+    const bot = await redeemResp.json() as RedeemResponse;
+    writeToOpenClawConfig(bot);
+
+    await fetch(`${API_BASE}/api/v1/openclaw/pending-pairs/${pairCode}/claim`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${auth.access_token}` },
+    });
+
+    spinner?.succeed(chalk.green(`✅ Paired ${bot.bot_name} (${bot.user_id})`));
+    if (!silent) {
+      console.log(chalk.yellow(`\n⚡ Bot paired. Run: openclaw gateway restart`));
+    }
+  } catch (e) {
+    spinner?.fail(chalk.red(`Error pairing ${botName}: ${e}`));
+  }
+}
+
 export async function runAutoPair(silent = false): Promise<number> {
   const auth = readAuth();
   if (!auth) return 0;

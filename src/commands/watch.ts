@@ -1,27 +1,35 @@
-import { Command } from 'commander';
-import chalk from 'chalk';
-import { readAuth } from '../lib/auth';
-import { runAutoPair } from './autopair';
+import { Command } from "commander";
+import chalk from "chalk";
+import { readAuth } from "../lib/auth";
+import { runAutoPair, redeemAndWrite } from "./autopair";
 
-const POLL_INTERVAL_MS = 10_000;
+const API_BASE = "https://api.badgerclaw.ai";
 
-export const watchCommand = new Command('watch')
-  .description('Watch for pending bot pairs and connect them automatically (runs until stopped)')
+export const watchCommand = new Command("watch")
+  .description("Watch for bot pair events in real-time (no polling)")
   .action(async () => {
     const auth = readAuth();
     if (!auth) {
-      console.log(chalk.yellow('Not logged in. Run `badgerclaw login` first.'));
+      console.log(chalk.yellow("Not logged in."));
       process.exit(1);
     }
-
-    console.log(chalk.green('👀 Watching for pending bot pairs... (Ctrl+C to stop)'));
-    console.log(chalk.dim(`Polling every ${POLL_INTERVAL_MS / 1000}s`));
-
-    // Run once immediately
     await runAutoPair(false);
-
-    // Then poll on interval
-    setInterval(async () => {
-      await runAutoPair(false);
-    }, POLL_INTERVAL_MS);
+    console.log(chalk.green("🔴 Listening for pair events... (Ctrl+C to stop)"));
+    const { default: EventSource } = await import("eventsource");
+    const es = new (EventSource as any)(`${API_BASE}/api/v1/openclaw/events`, {
+      headers: { Authorization: `Bearer ${auth.access_token}` },
+    });
+    es.onmessage = async (event: any) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "pair") {
+          console.log(chalk.cyan(`\n📱 Pair event received: ${data.bot_name}`));
+          await redeemAndWrite(data.pair_code, data.bot_name, data.bot_user_id, false);
+        }
+      } catch {}
+    };
+    es.onerror = () => {
+      console.log(chalk.dim("  Reconnecting..."));
+    };
+    await new Promise(() => {});
   });
