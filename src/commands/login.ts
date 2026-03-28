@@ -8,6 +8,7 @@ import { generateCodeVerifier, generateCodeChallenge } from '../lib/pkce';
 import { writeAuth, extractUsername } from '../lib/auth';
 import { getUnauthenticatedClient } from '../lib/api';
 import { runAutoPair } from './autopair';
+import { spawn } from 'child_process';
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 120000;
@@ -65,12 +66,21 @@ export const loginCommand = new Command('login')
 
           spinner.succeed(chalk.green(`Logged in as ${extractUsername(user_id)}`));
 
-          // Auto-pair any pending bots silently
+          // Auto-pair any bots pending right now
           const paired = await runAutoPair(true);
           if (paired > 0) {
             console.log(chalk.green(`✅ ${paired} bot(s) automatically paired to OpenClaw.`));
-            console.log(chalk.yellow('Run: openclaw gateway restart'));
+            console.log(chalk.yellow('Run: openclaw gateway restart to activate.'));
           }
+
+          // Start background watch daemon so future pairs from the app are picked up automatically
+          const self = process.argv[1];
+          const watcher = spawn(process.execPath, [self, 'watch'], {
+            detached: true,
+            stdio: 'ignore',
+          });
+          watcher.unref();
+          console.log(chalk.dim('Background pair-watcher started (picks up new pairs from the iOS app automatically).'));
 
           return;
         }
