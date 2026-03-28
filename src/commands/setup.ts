@@ -72,5 +72,15 @@ export const setupCommand = new Command('setup')
     }
 
     console.log(chalk.green('\n✅ BadgerClaw plugin installed successfully!'));
+
+    // Restart gateway to load the new plugin code
+    console.log(chalk.dim('\n  Restarting OpenClaw gateway to load plugin...'));
+    const restart = spawnSync('openclaw', ['gateway', 'restart'], { stdio: 'inherit', shell: true });
+    if (restart.status === 0) {
+      console.log(chalk.green('  Gateway restarted.'));
+    } else {
+      console.log(chalk.yellow('  Gateway restart failed or not running — start it manually: openclaw gateway start'));
+    }
+
     console.log(chalk.dim('\nNext: run `badgerclaw login` to authenticate.'));
   });
